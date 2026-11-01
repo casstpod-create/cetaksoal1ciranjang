@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cetak Soal Ujian</title>
+
+<!-- ===== MATHJAX: render rumus LaTeX ($...$ , $$...$$ , \(...\) , \[...\]) ===== -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    options: {
+      skipHtmlTags: ['script','noscript','style','textarea','pre','code']
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+
+<style>
+  :root{
+    --biru: #0d47a1;
+    --biru-muda: #e3edfb;
+    --abu: #6b7280;
+    --border: #d7dce3;
+    --merah: #b91c1c;
+    --hijau: #15803d;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background:#2a2b2d;
+    color:#1f2933;
+  }
+
+  /* ===== AREA KONTROL (tidak ikut tercetak) ===== */
+  .panel{
+    max-width:900px;
+    margin:24px auto;
+    background:#282525;
+    border-radius:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    padding:24px 28px 28px;
+  }
+  .panel h1{
+    font-size:20px;
+    color:var(--biru);
+    margin:0 0 4px;
+  }
+  .panel .sub{
+    color:var(--abu);
+    font-size:13px;
+    margin-bottom:20px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 18px;
+  }
+  .grid .full{ grid-column:1 / -1; }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:#374151;
+    margin-bottom:4px;
+  }
+  input[type=text], input[type=password], input[type=number]{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:14px;
+    background:#fbfcfd;
+  }
+  input:focus{ outline:none; border-color:var(--biru); background:#fff; }
+  .hint{ font-size:11.5px; color:var(--abu); margin-top:3px; }
+  .row-btn{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  button{
+    border:none;
+    border-radius:7px;
+    padding:11px 20px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.15s;
+  }
+  button:disabled{ opacity:.55; cursor:not-allowed; }
+  .btn-primary{ background:var(--biru); color:#fff; }
+  .btn-primary:hover:not(:disabled){ background:#0a3679; }
+  .btn-print{ background:var(--hijau); color:#fff; }
+  .btn-print:hover:not(:disabled){ background:#0f5c2b; }
+  .btn-ghost{ background:#eef1f5; color:#374151; }
+  .btn-ghost:hover:not(:disabled){ background:#e2e6eb; }
+  .status{
+    margin-top:14px;
+    font-size:13px;
+    padding:9px 12px;
+    border-radius:6px;
+    display:none;
+  }
+  .status.show{ display:block; }
+  .status.err{ background:#fee2e2; color:var(--merah); }
+  .status.ok{ background:#dcfce7; color:var(--hijau); }
+  .status.info{ background:var(--biru-muda); color:var(--biru); }
+
+  .checkbox-line{
+    display:flex; align-items:center; gap:8px;
+    margin-top:4px;
+  }
+  .checkbox-line input{ width:16px; height:16px; }
+  .checkbox-line label{ margin:0; font-weight:500; }
+
+  /* ===== LEMBAR SOAL (area cetak) ===== */
+  #lembarWrap{ display:none; }
+  #lembarWrap.show{ display:block; }
+
+  .kertas{
+    width:210mm;
+    min-height:297mm;
+    margin:24px auto;
+    background:#fff;
+    box-shadow:0 2px 14px rgba(0,0,0,.15);
+    padding:14mm 14mm 10mm;
+  }
+  .kop{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    text-align:center;
+    border-bottom:3px double #111;
+    padding-bottom:10px;
+    margin-bottom:14px;
+  }
+  .kop .kop-logo{
+    flex:0 0 auto;
+    width:22mm;
+    height:22mm;
+    object-fit:contain;
+  }
+  .kop .kop-teks{
+    flex:1 1 auto;
+  }
+  .kop .judul-besar{
+    font-size:17px;
+    font-weight:700;
+    letter-spacing:.3px;
+    margin:0 0 3px;
+    text-transform:uppercase;
+  }
+  .kop .judul-kecil{
+    font-size:13px;
+    margin:0 0 2px;
+  }
+  .kop .judul-tahun{
+    font-size:12px;
+    color:#374151;
+  }
+
+  /* ===== UPLOAD LOGO (panel kontrol) ===== */
+  .logo-upload-box{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    border:1px dashed var(--border);
+    border-radius:7px;
+    padding:10px 12px;
+    background:#fbfcfd;
+  }
+  .logo-preview{
+    width:56px;
+    height:56px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:#fff repeating-conic-gradient(#f1f3f5 0% 25%, #fff 0% 50%) 50% / 12px 12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    flex:0 0 auto;
+  }
+  .logo-preview img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .logo-preview span{ font-size:10px; color:var(--abu); text-align:center; }
+  .logo-upload-actions{ display:flex; flex-direction:column; gap:6px; }
+  .logo-upload-actions input[type=file]{ font-size:12.5px; }
+  .btn-mini{
+    background:#eef1f5;
+    color:#374151;
+    border:none;
+    border-radius:5px;
+    padding:5px 10px;
+    font-size:11.5px;
+    font-weight:600;
+    cursor:pointer;
+    align-self:flex-start;
+  }
+  .btn-mini:hover{ background:#e2e6eb; }
+
+  .identitas{
+    width:100%;
+    font-size:12.5px;
+    border-collapse:collapse;
+    margin-bottom:14px;
+  }
+  .identitas td{
+    padding:2.5px 4px;
+    vertical-align:top;
+  }
+  .identitas td.lbl{ width:110px; white-space:nowrap; }
+  .identitas td.ttk{ width:14px; }
+
+  .petunjuk{
+    font-size:11.5px;
+    background:#f4f6f8;
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:8px 10px;
+    margin-bottom:16px;
+    line-height:1.5;
+  }
+  .petunjuk b{ display:block; margin-bottom:3px; font-size:12px; }
+
+  .soal-item{
+    margin-bottom:1.25em; /* jarak antar soal: 1,25 spasi */
+    page-break-inside:avoid;
+    font-size:13px;
+    line-height:1.55;
+  }
+  .soal-nomor{
+    font-weight:700;
+    margin-right:4px;
+  }
+  .soal-teks{ display:inline; }
+  .soal-gambar{
+    display:block;
+    max-width:100%;
+    max-height:70mm;
+    margin:6px 0 6px 18px;
+    border:1px solid var(--border);
+  }
+  .opsi-list{
+    margin:0 0 0 18px; /* jarak soal ke pilihan jawaban: 0 spasi */
+    padding:0;
+    list-style:none;
+  }
+  .opsi-list li{
+    display:flex;
+    gap:6px;
+    margin-bottom:3px;
+    align-items:flex-start;
+  }
+  .opsi-huruf{ font-weight:600; min-width:16px; }
+  .opsi-gambar{
+    display:block;
+    max-width:80mm;
+    max-height:40mm;
+    margin-top:3px;
+    border:1px solid var(--border);
+  }
+  .kunci-tag{
+    display:inline-block;
+    margin-left:8px;
+    padding:1px 8px;
+    background:#fef3c7;
+    color:#92400e;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:700;
+  }
+
+  .pilihan-bersama-blok{
+    page-break-inside:avoid;
+    background:#f4f8ff;
+    border:1px solid #b9d3f7;
+    border-radius:6px;
+    padding:10px 14px 12px;
+    margin-bottom:10px;
+  }
+  .pilihan-bersama-label{
+    font-size:11.5px;
+    font-weight:700;
+    color:#0d47a1;
+    margin-bottom:6px;
+  }
+  .opsi-list-bersama{
+    margin:0 0 0 18px !important;
+  }
+
+  .bagian-soal-judul{
+    font-size:14px;
+    font-weight:800;
+    color:#0d47a1;
+    margin:18px 0 6px;
+    padding-bottom:4px;
+    border-bottom:2px solid #0d47a1;
+    break-after:avoid;
+    page-break-after:avoid;
+    break-inside:avoid;
+  }
+  .bagian-soal-judul:first-child{ margin-top:0; }
+  .bagian-soal-deskripsi{
+    font-size:11.5px;
+    font-style:italic;
+    color:#374151;
+    margin:0 0 10px;
+    break-after:avoid;
+    page-break-after:avoid;
+  }
+
+  /* ===== MODE HEMAT KERTAS (2 kolom + dipadatkan) ===== */
+  .kertas-konten{
+    column-count:1;
+    column-gap:9mm;
+  }
+  .kertas.hemat{
+    padding:10mm 10mm 8mm;
+  }
+  .kertas.hemat .kop{
+    padding-bottom:6px;
+    margin-bottom:8px;
+    gap:8px;
+  }
+  .kertas.hemat .kop .kop-logo{
+    width:14mm;
+    height:14mm;
+  }
+  .kertas.hemat .judul-besar{ font-size:14px; margin-bottom:2px; }
+  .kertas.hemat .judul-kecil{ font-size:11px; }
+  .kertas.hemat .judul-tahun{ font-size:10px; }
+  .kertas.hemat .identitas{ font-size:10.5px; margin-bottom:7px; }
+  .kertas.hemat .identitas td{ padding:1.5px 4px; }
+  .kertas.hemat .petunjuk{
+    font-size:9.5px;
+    padding:5px 8px;
+    margin-bottom:8px;
+    line-height:1.35;
+  }
+  .kertas.hemat .petunjuk b{ font-size:10px; margin-bottom:2px; }
+  .kertas.hemat .kertas-konten{
+    column-count:2;
+    column-gap:8mm;
+  }
+  .kertas.hemat .soal-item{
+    font-size:10.5px;
+    line-height:1.4;
+    margin-bottom:0.75em;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  .kertas.hemat .soal-gambar{
+    max-height:32mm;
+    margin:3px 0 3px 10px;
+  }
+  .kertas.hemat .opsi-list{
+    margin:0 0 0 12px;
+  }
+  .kertas.hemat .opsi-list li{
+    margin-bottom:1px;
+    gap:5px;
+  }
+  .kertas.hemat .opsi-gambar{
+    max-width:55mm;
+    max-height:24mm;
+  }
+  .kertas.hemat .kunci-tag{
+    font-size:9.5px;
+    padding:0 6px;
+  }
+  .kertas.hemat .pilihan-bersama-blok{
+    padding:6px 9px 7px;
+    margin-bottom:7px;
+    break-inside:avoid;
+    page-break-inside:avoid;
+    column-span:all;
+  }
+  .kertas.hemat .pilihan-bersama-label{
+    font-size:10px;
+    margin-bottom:4px;
+  }
+  .kertas.hemat .footer-kertas{
+    margin-top:10px;
+    padding-top:4px;
+    font-size:9px;
+  }
+  .kertas.hemat .bagian-soal-judul{
+    column-span:all;
+    font-size:11.5px;
+    margin:12px 0 4px;
+  }
+  .kertas.hemat .bagian-soal-deskripsi{
+    column-span:all;
+    font-size:9.5px;
+    margin:0 0 7px;
+  }
+
+  .footer-kertas{
+    margin-top:20px;
+    text-align:center;
+    font-size:10.5px;
+    color:var(--abu);
+    border-top:1px solid var(--border);
+    padding-top:6px;
+  }
+
+  /* ===== MODE CETAK ===== */
+  @media print{
+    body{ background:#fff; }
+    .panel, .no-print{ display:none !important; }
+    #lembarWrap{ display:block !important; }
+    .kertas{
+      box-shadow:none;
+      margin:0;
+      width:auto;
+      min-height:auto;
+      padding:0;
+    }
+    @page{
+      size: A4;
+      margin: 12mm 10mm;
+    }
+  }
+
+  @media (max-width:640px){
+    .grid{ grid-template-columns:1fr; }
+    .kertas{ width:100%; padding:8mm; }
+  }
+
+  /* ===== MODE QUIS (INTERAKTIF) ===== */
+  .btn-quiz{ background:#7c3aed; color:#fff; }
+  .btn-quiz:hover:not(:disabled){ background:#6528c9; }
+
+  .kuis-overlay{
+    position:fixed; inset:0;
+    background:rgba(15,17,20,.65);
+    display:none;
+    align-items:center; justify-content:center;
+    padding:18px;
+    z-index:1000;
+  }
+  .kuis-overlay.show{ display:flex; }
+  .kuis-card{
+    background:#fff;
+    border-radius:12px;
+    width:100%; max-width:640px;
+    max-height:92vh;
+    overflow-y:auto;
+    padding:22px 24px 24px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35);
+  }
+  .kuis-header{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--border);
+  }
+  .kuis-progress{ font-size:13px; font-weight:700; color:var(--abu); }
+  .kuis-header-right{ display:flex; align-items:center; gap:10px; }
+  .kuis-timer{
+    font-size:14.5px; font-weight:800;
+    color:var(--biru); background:var(--biru-muda);
+    padding:5px 13px; border-radius:20px;
+    min-width:56px; text-align:center;
+  }
+  .kuis-timer.warn{ color:#fff; background:var(--merah); }
+  .kuis-close{
+    background:#eef1f5; border:none; color:#374151;
+    width:30px; height:30px; border-radius:50%;
+    font-size:15px; cursor:pointer; line-height:1;
+  }
+  .kuis-close:hover{ background:#e2e6eb; }
+
+  .kuis-soal-teks{ font-size:15px; line-height:1.65; color:#1f2933; margin-bottom:12px; }
+  .kuis-opsi{ display:flex; flex-direction:column; gap:9px; margin:0 0 20px; }
+  .kuis-opsi label{
+    display:flex; gap:10px; align-items:flex-start;
+    padding:11px 13px;
+    border:1.5px solid var(--border); border-radius:9px;
+    cursor:pointer; font-size:14px; color:#1f2933;
+    transition:.15s;
+  }
+  .kuis-opsi label:hover{ border-color:var(--biru); background:var(--biru-muda); }
+  .kuis-opsi label.dipilih{ border-color:var(--biru); background:var(--biru-muda); font-weight:600; }
+  .kuis-opsi input{ margin-top:3px; width:15px; height:15px; flex:0 0 auto; }
+  .kuis-opsi .soal-gambar, .kuis-opsi .opsi-gambar{ max-width:100%; }
+  #kuisBody .soal-gambar{ max-height:60mm; margin:6px 0 14px; }
+
+  .kuis-footer{ display:flex; justify-content:space-between; gap:10px; }
+  .kuis-skor{
+    text-align:center; font-size:24px; font-weight:800;
+    color:var(--biru); margin:6px 0 16px;
+  }
+  .kuis-hasil-item{
+    border:1.5px solid var(--border); border-radius:9px;
+    padding:11px 13px; margin-bottom:10px; font-size:13.5px; line-height:1.5;
+  }
+  .kuis-hasil-item.benar{ border-color:var(--hijau); background:#f0fdf4; }
+  .kuis-hasil-item.salah{ border-color:var(--merah); background:#fef2f2; }
+  .kuis-hasil-item .kuis-hasil-info{ margin-top:6px; font-size:12.5px; color:#374151; }
+
+  @media (max-width:640px){
+    .kuis-card{ padding:16px 16px 18px; max-height:96vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ PANEL KONTROL ============ -->
+<div class="panel no-print">
+  <h1>🖨️ Cetak Lembar Soal Ujian</h1>
+  <div class="sub">Isi data di bawah, tekan <b>Preview</b> untuk melihat lembar soal, lalu tekan <b>Cetak Soal (PDF)</b>.</div>
+
+  <div class="grid">
+    <div>
+      <label>Kode Mata Pelajaran *</label>
+      <input type="text" id="kodeMapel" placeholder="Contoh: MTK01">
+    </div>
+    <div>
+      <label>Password Mulai *</label>
+      <input type="password" id="passwordMulai" placeholder="Password soal">
+    </div>
+
+    <div class="full" style="border-top:1px solid var(--border); padding-top:12px; margin-top:4px;">
+      <label style="font-size:13px; color:var(--biru);">Identitas Lembar Soal (untuk kop &amp; kolom identitas cetak)</label>
+    </div>
+
+    <div class="full">
+      <label>Logo Sekolah (tampil di sisi kiri kop)</label>
+      <div class="logo-upload-box">
+        <div class="logo-preview" id="logoPreviewBox"><span>Belum ada logo</span></div>
+        <div class="logo-upload-actions">
+          <input type="file" id="logoUpload" accept="image/*">
+          <button type="button" class="btn-mini" id="btnHapusLogo">Hapus Logo</button>
+        </div>
+      </div>
+      <div class="hint">Logo disimpan di browser ini (bukan dikirim ke server) dan otomatis tampil lagi saat halaman dibuka ulang.</div>
+    </div>
+
+    <div>
+      <label>Judul Ujian</label>
+      <input type="text" id="judulUjian" placeholder="Contoh: UJIAN AKHIR SEMESTER GENAP">
+    </div>
+    <div>
+      <label>Tahun Ajaran</label>
+      <input type="text" id="tahunAjaran" placeholder="Contoh: 2025/2026">
+    </div>
+
+    <div>
+      <label>Nama Sekolah</label>
+      <input type="text" id="namaSekolah" placeholder="Contoh: SMP Negeri 1 Cikalongkulon">
+    </div>
+    <div>
+      <label>Kelas / Rombel</label>
+      <input type="text" id="kelasRombel" placeholder="Contoh: VIII A">
+    </div>
+
+    <div>
+      <label>Hari, Tanggal</label>
+      <input type="text" id="hariTanggal" placeholder="Contoh: Senin, 1 September 2026">
+    </div>
+    <div>
+      <label>Waktu</label>
+      <input type="text" id="waktuUjian" placeholder="Contoh: 07.30 - 09.00 WIB">
+    </div>
+
+    <div class="full">
+      <div class="checkbox-line">
+        <input type="checkbox" id="tampilkanKunci">
+        <label for="tampilkanKunci">Sertakan kunci jawaban (untuk arsip guru, jangan dicetak untuk siswa)</label>
+      </div>
+      <div class="checkbox-line">
+        <input type="checkbox" id="hematKertas" checked>
+        <label for="hematKertas">Mode Hemat Kertas (2 kolom, font &amp; gambar dipadatkan)</label>
+      </div>
+    </div>
+
+    <div class="full" style="border-top:1px solid var(--border); padding-top:12px; margin-top:4px;">
+      <label style="font-size:13px; color:#7c3aed;">Mode Quis Interaktif</label>
+    </div>
+    <div>
+      <label>Durasi per Soal (detik)</label>
+      <input type="number" id="durasiSoalKuis" value="30" min="5" step="5">
+      <div class="hint">Bila waktu habis, quis otomatis berpindah ke soal berikutnya.</div>
+    </div>
+  </div>
+
+  <div class="row-btn">
+    <button class="btn-primary" id="btnPreview">👁️ Preview</button>
+    <button class="btn-print" id="btnPrint" disabled>🖨️ Cetak Soal (PDF)</button>
+    <button class="btn-quiz" id="btnKuis">📝 Gunakan Quis</button>
+    <button class="btn-ghost" id="btnReset">↺ Reset</button>
+  </div>
+
+  <div class="status" id="statusBox"></div>
+</div>
+
+<!-- ============ LEMBAR SOAL (hasil preview, ikut tercetak) ============ -->
+<div id="lembarWrap">
+  <div class="kertas" id="kertasSoal"></div>
+</div>
+
+<!-- ============ MODE QUIS INTERAKTIF (tidak ikut tercetak) ============ -->
+<div class="kuis-overlay no-print" id="kuisOverlay">
+  <div class="kuis-card">
+    <div class="kuis-header">
+      <div class="kuis-progress" id="kuisProgress">Soal 1 dari 1</div>
+      <div class="kuis-header-right">
+        <div class="kuis-timer" id="kuisTimer">⏱ 30</div>
+        <button class="kuis-close" id="btnTutupKuis" title="Tutup Quis" type="button">✕</button>
+      </div>
+    </div>
+    <div id="kuisBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ═══════════════════════════════════════════════════════
+  //  GANTI URL DI BAWAH INI DENGAN URL WEB APP HASIL DEPLOY
+  // ═══════════════════════════════════════════════════════
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyaBLYjzMf7eXARTND6F-7vwQcKO79OeNP7lyX-Zw0MAGhYjoEKMPBMygzyGEaq1TOO/exec';
+
+  const $ = (id) => document.getElementById(id);
+  const statusBox = $('statusBox');
+
+  function setStatus(msg, type){
+    statusBox.textContent = msg;
+    statusBox.className = 'status show ' + (type || 'info');
+  }
+  function clearStatus(){
+    statusBox.className = 'status';
+  }
+
+  function escapeHtml(str){
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ===== RENDER RUMUS LATEX (MATHJAX) =====
+  // Dipanggil setiap kali ada konten soal baru yang dimasukkan ke DOM
+  // (innerHTML), supaya penulisan seperti $1\text{ km}$ dirender jadi rumus,
+  // bukan tampil sebagai teks mentah.
+  function renderMathJax(target){
+    try {
+      if (window.MathJax && window.MathJax.typesetPromise){
+        MathJax.typesetPromise(target ? [target] : undefined)
+          .catch(function(e){ console.warn('MathJax gagal merender:', e); });
+      } else if (window.MathJax && window.MathJax.startup && window.MathJax.startup.promise){
+        // MathJax masih dalam proses dimuat/disiapkan, tunggu dulu
+        window.MathJax.startup.promise.then(function(){
+          MathJax.typesetPromise(target ? [target] : undefined)
+            .catch(function(e){ console.warn('MathJax gagal merender:', e); });
+        });
+      }
+    } catch(e){ console.warn('MathJax gagal merender:', e); }
+  }
+
+  // ===== LOGO SEKOLAH =====
+  let logoDataUrl = localStorage.getItem('lembarSoalLogo') || '';
+
+  function tampilkanPreviewLogo(){
+    const box = $('logoPreviewBox');
+    if (logoDataUrl){
+      box.innerHTML = '<img src="' + logoDataUrl + '" alt="Logo sekolah">';
+    } else {
+      box.innerHTML = '<span>Belum ada logo</span>';
+    }
+  }
+  tampilkanPreviewLogo();
+
+  $('logoUpload').addEventListener('change', function(ev){
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')){
+      setStatus('File yang dipilih bukan gambar.', 'err');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      logoDataUrl = e.target.result;
+      try { localStorage.setItem('lembarSoalLogo', logoDataUrl); } catch(_) {}
+      tampilkanPreviewLogo();
+      setStatus('Logo berhasil diunggah.', 'ok');
+    };
+    reader.onerror = function(){
+      setStatus('Gagal membaca file logo.', 'err');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('btnHapusLogo').addEventListener('click', function(){
+    logoDataUrl = '';
+    localStorage.removeItem('lembarSoalLogo');
+    $('logoUpload').value = '';
+    tampilkanPreviewLogo();
+    clearStatus();
+  });
+
+  function getBaseUrl(){
+    if (!WEB_APP_URL || WEB_APP_URL.indexOf('xxxx') !== -1) {
+      throw new Error('URL Web App belum diatur di dalam kode (cari WEB_APP_URL di bagian <script>).');
+    }
+    return WEB_APP_URL;
+  }
+
+  async function callGet(action, params){
+    const base = getBaseUrl();
+    const qs = new URLSearchParams(Object.assign({ action }, params || {}));
+    const res = await fetch(base + '?' + qs.toString(), { method:'GET' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Permintaan gagal.');
+    return data;
+  }
+
+  // ===== DETEKSI LINK GAMBAR DI DALAM TEKS SOAL / PILIHAN =====
+  // Mengambil semua URL gambar yang tertulis langsung di dalam teks
+  // (baik ekstensi gambar biasa maupun link share Google Drive),
+  // lalu mengembalikan teks bersih (tanpa link) + daftar URL gambarnya.
+  function ubahLinkDriveJadiLangsung(teks){
+    teks = teks.replace(/https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)[^\s]*/gi, function(m, id){
+      return 'https://drive.google.com/uc?export=view&id=' + id;
+    });
+    teks = teks.replace(/https?:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/gi, function(m, id){
+      return 'https://drive.google.com/uc?export=view&id=' + id;
+    });
+    return teks;
+  }
+
+  function ekstrakGambarDariTeks(teksAsli){
+    let teks = ubahLinkDriveJadiLangsung(String(teksAsli || ''));
+    const gambarUrls = [];
+
+    // Link gambar: berekstensi umum, ATAU link Google Drive yang sudah dikonversi
+    const regexGambar = /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s]*)?|https?:\/\/drive\.google\.com\/uc\?export=view&id=[a-zA-Z0-9_-]+)/gi;
+
+    teks = teks.replace(regexGambar, function(url){
+      gambarUrls.push(url);
+      return '';
+    });
+
+    return { teksBersih: teks.replace(/\s+/g, ' ').trim(), gambarUrls: gambarUrls };
+  }
+
+  function renderTagGambar(urls, kelasCss, altTeks){
+    // Gambar TIDAK langsung dipasang sebagai src di sini.
+    // Disimpan dulu di data-gambar-url, lalu diproses oleh muatSemuaGambarSoal()
+    // supaya link Google Drive / proxy bisa diambil lewat Apps Script (proxyImage)
+    // dan tidak kena masalah login/akses saat dimuat langsung oleh browser.
+    let out = '';
+    urls.forEach(function(url){
+      out += '<img class="' + kelasCss + '" data-gambar-url="' + escapeHtml(url) + '" '
+           + 'style="min-height:24mm;background:#f4f6f8" alt="' + escapeHtml(altTeks) + '">';
+    });
+    return out;
+  }
+
+  // ===== AMBIL ID GOOGLE DRIVE DARI BERBAGAI FORMAT LINK =====
+  function extractDriveId(url){
+    if (!url) return null;
+    let m = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/); if (m) return m[1];
+    m = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/); if (m) return m[1];
+    if (/^[a-zA-Z0-9_-]{25,}$/.test(url)) return url;
+    return null;
+  }
+
+  // Panggil Apps Script (action=proxyImage&id=...) untuk mengambil gambar
+  // sebagai base64 data URI, persis seperti cara aplikasi ujian menampilkan gambar.
+  const _gambarProxyCache = {};
+  async function ambilGambarProxy(fileId){
+    if (_gambarProxyCache[fileId]) return _gambarProxyCache[fileId];
+    const base = getBaseUrl();
+    const qs = new URLSearchParams({ action:'proxyImage', id: fileId });
+    const res = await fetch(base + '?' + qs.toString());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.success || !data.dataUri) throw new Error(data.message || 'proxyImage gagal');
+    _gambarProxyCache[fileId] = data.dataUri;
+    return data.dataUri;
+  }
+
+  // Muat semua <img data-gambar-url="..."> di lembar soal:
+  // - Link Google Drive / berisi kata "proxyImage" -> diambil lewat Apps Script (data URI)
+  // - Link gambar biasa (host lain, berekstensi umum) -> dipakai langsung
+  async function muatSemuaGambarSoal(containerSelector){
+    const sel = (containerSelector || '#kertasSoal') + ' img[data-gambar-url]';
+    const daftarImg = Array.from(document.querySelectorAll(sel));
+    let gagal = 0;
+    for (const img of daftarImg){
+      const url = img.getAttribute('data-gambar-url');
+      if (!url) continue;
+      const perluProxy = /drive\.google\.com|proxyimage/i.test(url) || extractDriveId(url);
+      try {
+        if (perluProxy){
+          const fid = extractDriveId(url);
+          if (!fid) throw new Error('ID Drive tidak ditemukan pada link');
+          const dataUri = await ambilGambarProxy(fid);
+          img.src = dataUri;
+        } else {
+          img.src = url;
+        }
+        img.style.background = 'transparent';
+      } catch (e){
+        gagal++;
+        img.alt = 'Gagal memuat: ' + (img.getAttribute('alt') || 'gambar');
+        img.style.cssText = 'min-height:16mm;background:#fee2e2;color:#b91c1c;font-size:11px;display:flex;align-items:center;justify-content:center;border:1px dashed #b91c1c;padding:4px;text-align:center;';
+      }
+      img.removeAttribute('data-gambar-url');
+    }
+    return { total: daftarImg.length, gagal: gagal };
+  }
+
+  // ===== GRUP PILIHAN JAWABAN LEBIH DARI 5 =====
+  // Soal-soal berurutan yang pilihan jawabannya sama-sama lebih dari 5
+  // dianggap satu kelompok (misal soal cerita/wacana dengan pilihan bersama).
+  // Pilihan jawabannya cukup dicetak SEKALI di atas soal pertama pada
+  // kelompok itu; soal-soal lain dalam kelompok tidak mencetak pilihan lagi.
+  function jmlPilihan(s){
+    return Array.isArray(s.pilihan) ? s.pilihan.length : 0;
+  }
+  function tandaiGrupPilihanBesar(list){
+    const info = new Array(list.length).fill(null);
+    let i = 0;
+    while (i < list.length){
+      if (jmlPilihan(list[i]) > 5){
+        let j = i;
+        while (j < list.length && jmlPilihan(list[j]) > 5) j++;
+        for (let k = i; k < j; k++){
+          info[k] = { grupMulaiIdx: i, grupAkhirIdx: j - 1 };
+        }
+        i = j;
+      } else {
+        i++;
+      }
+    }
+    return info;
+  }
+  function renderDaftarOpsi(pilihan, kelasUl){
+    let out = '<ul class="' + kelasUl + '">';
+    pilihan.forEach(function(op){
+      const opsiOlahan = ekstrakGambarDariTeks(op.teks);
+      out += '<li><span class="opsi-huruf">' + op.huruf + '.</span><span>';
+      if (opsiOlahan.teksBersih) out += escapeHtml(opsiOlahan.teksBersih);
+      if (op.gambar) out += renderTagGambar([op.gambar], 'opsi-gambar', 'Opsi ' + op.huruf);
+      out += renderTagGambar(opsiOlahan.gambarUrls, 'opsi-gambar', 'Opsi ' + op.huruf);
+      out += '</span></li>';
+    });
+    out += '</ul>';
+    return out;
+  }
+  function renderBlokPilihanBersama(soalPertama, noAwal, noAkhir){
+    let out = '<div class="pilihan-bersama-blok">';
+    out += '<div class="pilihan-bersama-label">Pilihan Jawaban untuk Soal No. '
+         + escapeHtml(String(noAwal)) + (String(noAwal) !== String(noAkhir) ? ' – ' + escapeHtml(String(noAkhir)) : '')
+         + ':</div>';
+    out += renderDaftarOpsi(soalPertama.pilihan, 'opsi-list opsi-list-bersama');
+    out += '</div>';
+    return out;
+  }
+
+  // ===== PENGELOMPOKAN SOAL BERDASARKAN BENTUK =====
+  // 4 atau 5 pilihan  -> Pilihan Ganda
+  // 2 pilihan         -> Benar - Salah
+  // lebih dari 5      -> Menjodohkan
+  // selain itu        -> Lainnya (ditaruh paling akhir, jaga-jaga)
+  function tentukanBentukSoal(jml){
+    if (jml === 4 || jml === 5) return 'pg';
+    if (jml === 2) return 'bs';
+    if (jml > 5) return 'menjodohkan';
+    return 'lain';
+  }
+
+  const DEFINISI_BAGIAN_SOAL = [
+    { key: 'pg',           judul: 'Pilihan Ganda',              deskripsi: 'Pilihlah satu jawaban yang paling tepat!' },
+    { key: 'bs',           judul: 'Pernyataan Benar – Salah',   deskripsi: 'Tentukan apakah pernyataan berikut Benar atau Salah!' },
+    { key: 'menjodohkan',  judul: 'Menjodohkan',                deskripsi: 'Jodohkan setiap pernyataan dengan pilihan jawaban yang sesuai!' },
+    { key: 'lain',         judul: 'Lainnya',                    deskripsi: '' },
+  ];
+
+  // Mengurutkan ulang soal per bentuk (urutan asli di dalam tiap bentuk tetap dijaga),
+  // lalu mengembalikan { soalTerurut, headerMap } — headerMap memetakan index di
+  // soalTerurut ke info judul bagian yang harus dicetak SEBELUM soal pada index itu.
+  // Setiap soal juga diberi properti `noTampil`, yaitu nomor urut LOKAL yang
+  // dimulai dari 1 kembali di setiap bentuk soal (PG, Benar-Salah, Menjodohkan, dst).
+  function urutkanSoalPerBentuk(list){
+    const kelompok = { pg: [], bs: [], menjodohkan: [], lain: [] };
+    list.forEach(function(s){
+      kelompok[tentukanBentukSoal(jmlPilihan(s))].push(s);
+    });
+
+    const hurufBagian = ['A','B','C','D','E'];
+    let idxHuruf = 0;
+    const soalTerurut = [];
+    const headerMap = {};
+
+    DEFINISI_BAGIAN_SOAL.forEach(function(bagian){
+      const arr = kelompok[bagian.key];
+      if (arr.length === 0) return;
+      headerMap[soalTerurut.length] = {
+        judul: hurufBagian[idxHuruf] + '. ' + bagian.judul,
+        deskripsi: bagian.deskripsi,
+      };
+      idxHuruf++;
+      arr.forEach(function(s, idx){
+        // Buat salinan objek soal supaya data asli (mis. s.no dari sumber data)
+        // tidak berubah, lalu tambahkan noTampil = nomor urut lokal (mulai dari 1).
+        soalTerurut.push(Object.assign({}, s, { noTampil: idx + 1 }));
+      });
+    });
+
+    return { soalTerurut: soalTerurut, headerMap: headerMap };
+  }
+
+  function renderLembar(mataPelajaran, soalList){
+    const judul       = escapeHtml($('judulUjian').value)   || 'LEMBAR SOAL UJIAN';
+    const tahunAjaran  = escapeHtml($('tahunAjaran').value);
+    const namaSekolah  = escapeHtml($('namaSekolah').value);
+    const kelasRombel  = escapeHtml($('kelasRombel').value);
+    const hariTanggal  = escapeHtml($('hariTanggal').value);
+    const waktuUjian   = escapeHtml($('waktuUjian').value);
+    const kodeMapel    = escapeHtml($('kodeMapel').value.toUpperCase());
+    const tampilKunci  = $('tampilkanKunci').checked;
+    const modeHemat    = $('hematKertas').checked;
+
+    $('kertasSoal').className = 'kertas' + (modeHemat ? ' hemat' : '');
+
+    let html = '';
+    html += '<div class="kop">';
+    if (logoDataUrl) {
+      html += '<img class="kop-logo" src="' + logoDataUrl + '" alt="Logo sekolah">';
+    }
+    html += '<div class="kop-teks">';
+    html += '<div class="judul-besar">' + judul + '</div>';
+    html += '<div class="judul-kecil">Mata Pelajaran: ' + escapeHtml(mataPelajaran) + ' (' + kodeMapel + ')</div>';
+    if (tahunAjaran) html += '<div class="judul-tahun">Tahun Ajaran ' + tahunAjaran + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<table class="identitas">';
+    html += row('Nama Sekolah', namaSekolah) + row('Kelas', kelasRombel);
+    html += row('Hari, Tanggal', hariTanggal) + row('Waktu', waktuUjian);
+    html += row('Nama Peserta', '________________________________');
+    html += row('No. Peserta', '________________________________');
+    html += '</table>';
+
+    html += '<div class="petunjuk"><b>Petunjuk Pengerjaan:</b>'
+          + '1) Tulis identitas pada tempat yang telah disediakan. '
+          + '2) Bacalah setiap soal dengan teliti sebelum menjawab. '
+          + '3) Pilih salah satu jawaban yang dianggap paling tepat. '
+          + '4) Periksa kembali jawaban sebelum diserahkan.</div>';
+
+    const { soalTerurut, headerMap } = urutkanSoalPerBentuk(soalList);
+    const grupInfo = tandaiGrupPilihanBesar(soalTerurut);
+
+    html += '<div class="kertas-konten">';
+
+    for (let i = 0; i < soalTerurut.length; i++){
+      const s = soalTerurut[i];
+      const grup = grupInfo[i];
+
+      // Cetak judul bagian (Pilihan Ganda / Benar-Salah / Menjodohkan) di awal kelompok
+      if (headerMap[i]){
+        html += '<div class="bagian-soal-judul">' + escapeHtml(headerMap[i].judul) + '</div>';
+        if (headerMap[i].deskripsi){
+          html += '<div class="bagian-soal-deskripsi">' + escapeHtml(headerMap[i].deskripsi) + '</div>';
+        }
+      }
+
+      // Jika soal ini adalah soal PERTAMA pada kelompok pilihan >5,
+      // cetak dulu blok pilihan bersama di atasnya.
+      if (grup && grup.grupMulaiIdx === i){
+        const soalAwal  = soalTerurut[grup.grupMulaiIdx];
+        const soalAkhir = soalTerurut[grup.grupAkhirIdx];
+        html += renderBlokPilihanBersama(soalAwal, soalAwal.noTampil, soalAkhir.noTampil);
+      }
+
+      html += '<div class="soal-item">';
+      html += '<span class="soal-nomor">' + s.noTampil + '.</span>';
+
+      // Deteksi link gambar yang ditulis langsung di dalam teks soal
+      const soalOlahan = ekstrakGambarDariTeks(s.soal);
+      html += '<span class="soal-teks">' + escapeHtml(soalOlahan.teksBersih) + '</span>';
+      if (tampilKunci && s.kunci) {
+        html += '<span class="kunci-tag">Kunci: ' + escapeHtml(s.kunci) + '</span>';
+      }
+
+      // Gambar dari kolom gambarSoal (jika ada) + gambar hasil deteksi link di teks
+      if (s.gambarSoal) {
+        html += renderTagGambar([s.gambarSoal], 'soal-gambar', 'Gambar soal ' + s.noTampil);
+      }
+      html += renderTagGambar(soalOlahan.gambarUrls, 'soal-gambar', 'Gambar soal ' + s.noTampil);
+
+      // Pilihan jawaban dicetak per-soal HANYA jika bukan bagian dari
+      // kelompok pilihan >5 (kelompok itu sudah diwakili blok bersama di atas).
+      if (!grup && s.pilihan && s.pilihan.length){
+        html += renderDaftarOpsi(s.pilihan, 'opsi-list');
+      }
+      html += '</div>';
+    }
+
+    html += '</div>'; // tutup .kertas-konten
+
+    html += '<div class="footer-kertas">— Selamat Mengerjakan —</div>';
+
+    $('kertasSoal').innerHTML = html;
+    $('lembarWrap').classList.add('show');
+    renderMathJax($('kertasSoal'));
+
+    function row(label, value){
+      return '<tr><td class="lbl">' + label + '</td><td class="ttk">:</td><td>' + (value || '&nbsp;') + '</td></tr>';
+    }
+  }
+
+  async function doPreview(){
+    clearStatus();
+    const kode = $('kodeMapel').value.trim();
+    const pwd  = $('passwordMulai').value.trim();
+
+    if (!kode) { setStatus('Kode mata pelajaran wajib diisi.', 'err'); return; }
+    if (!pwd)  { setStatus('Password mulai wajib diisi.', 'err'); return; }
+
+    $('btnPreview').disabled = true;
+    $('btnPrint').disabled = true;
+    setStatus('Mengambil data soal, mohon tunggu...', 'info');
+
+    try {
+      const data = await callGet('getSoal', { kode: kode, password: pwd });
+      const soalList = data.soalList || [];
+      if (soalList.length === 0){
+        setStatus('Tidak ada soal ditemukan untuk kode tersebut.', 'err');
+        return;
+      }
+      renderLembar(data.mataPelajaran || '-', soalList);
+      document.getElementById('lembarWrap').scrollIntoView({ behavior:'smooth' });
+
+      setStatus('Preview dimuat (' + soalList.length + ' soal). Sedang memuat gambar...', 'info');
+      const hasilGambar = await muatSemuaGambarSoal();
+      if (hasilGambar.total === 0) {
+        setStatus('Preview berhasil dimuat (' + soalList.length + ' soal, tanpa gambar). Tekan "Cetak Soal (PDF)".', 'ok');
+      } else if (hasilGambar.gagal === 0) {
+        setStatus('Preview berhasil dimuat (' + soalList.length + ' soal, ' + hasilGambar.total + ' gambar). Tekan "Cetak Soal (PDF)".', 'ok');
+      } else {
+        setStatus(hasilGambar.gagal + ' dari ' + hasilGambar.total + ' gambar gagal dimuat (lihat kotak merah di lembar soal). Soal lain tetap bisa dicetak.', 'err');
+      }
+      $('btnPrint').disabled = false;
+    } catch (ex) {
+      setStatus('Gagal memuat soal: ' + ex.message, 'err');
+    } finally {
+      $('btnPreview').disabled = false;
+    }
+  }
+
+  function doPrint(){
+    window.print();
+  }
+
+  function doReset(){
+    ['kodeMapel','passwordMulai','judulUjian','tahunAjaran','namaSekolah',
+     'kelasRombel','hariTanggal','waktuUjian'].forEach(function(id){ $(id).value = ''; });
+    $('tampilkanKunci').checked = false;
+    $('kertasSoal').innerHTML = '';
+    $('lembarWrap').classList.remove('show');
+    $('btnPrint').disabled = true;
+    clearStatus();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  MODE QUIS INTERAKTIF
+  // ═══════════════════════════════════════════════════════
+  let kuisSoalList   = [];
+  let kuisIndex      = 0;
+  let kuisJawaban    = [];
+  let kuisDurasi     = 30;
+  let kuisSisaDetik  = 0;
+  let kuisTimerId    = null;
+
+  function ambilDurasiKuis(){
+    const v = parseInt($('durasiSoalKuis').value, 10);
+    return (!isNaN(v) && v > 0) ? v : 30;
+  }
+
+  async function doMulaiKuis(){
+    clearStatus();
+    const kode = $('kodeMapel').value.trim();
+    const pwd  = $('passwordMulai').value.trim();
+
+    if (!kode) { setStatus('Kode mata pelajaran wajib diisi.', 'err'); return; }
+    if (!pwd)  { setStatus('Password / kata kunci mulai wajib diisi.', 'err'); return; }
+
+    $('btnKuis').disabled = true;
+    setStatus('Mengambil soal untuk quis, mohon tunggu...', 'info');
+
+    try {
+      const data = await callGet('getSoal', { kode: kode, password: pwd });
+      const soalList = data.soalList || [];
+      if (soalList.length === 0){
+        setStatus('Tidak ada soal ditemukan untuk kode dan kata kunci tersebut.', 'err');
+        return;
+      }
+
+      kuisSoalList = soalList;
+      kuisIndex    = 0;
+      kuisJawaban  = new Array(kuisSoalList.length).fill(null);
+      kuisDurasi   = ambilDurasiKuis();
+
+      $('kuisOverlay').classList.add('show');
+      renderSoalKuis(kuisIndex);
+      setStatus('Quis dimulai (' + kuisSoalList.length + ' soal).', 'ok');
+    } catch (ex) {
+      setStatus('Gagal memuat soal untuk quis: ' + ex.message, 'err');
+    } finally {
+      $('btnKuis').disabled = false;
+    }
+  }
+
+  function renderSoalKuis(idx){
+    hentikanTimerKuis();
+    const s = kuisSoalList[idx];
+    $('kuisProgress').textContent = 'Soal ' + (idx + 1) + ' dari ' + kuisSoalList.length;
+
+    const soalOlahan = ekstrakGambarDariTeks(s.soal);
+    let html = '<div class="kuis-soal-teks"><b>' + (idx + 1) + '.</b> ' + escapeHtml(soalOlahan.teksBersih) + '</div>';
+
+    if (s.gambarSoal) html += renderTagGambar([s.gambarSoal], 'soal-gambar', 'Gambar soal ' + (idx + 1));
+    html += renderTagGambar(soalOlahan.gambarUrls, 'soal-gambar', 'Gambar soal ' + (idx + 1));
+
+    html += '<div class="kuis-opsi">';
+    (s.pilihan || []).forEach(function(op){
+      const opsiOlahan = ekstrakGambarDariTeks(op.teks);
+      const dipilih = kuisJawaban[idx] === op.huruf;
+      html += '<label class="' + (dipilih ? 'dipilih' : '') + '" data-huruf="' + escapeHtml(op.huruf) + '">';
+      html += '<input type="radio" name="kuisOpsi" value="' + escapeHtml(op.huruf) + '" ' + (dipilih ? 'checked' : '') + '>';
+      html += '<span>' + escapeHtml(op.huruf) + '. ' + escapeHtml(opsiOlahan.teksBersih);
+      if (op.gambar) html += renderTagGambar([op.gambar], 'opsi-gambar', 'Opsi ' + op.huruf);
+      html += renderTagGambar(opsiOlahan.gambarUrls, 'opsi-gambar', 'Opsi ' + op.huruf);
+      html += '</span></label>';
+    });
+    html += '</div>';
+
+    html += '<div class="kuis-footer">';
+    html += '<button class="btn-ghost" id="btnKembaliKuis" type="button"' + (idx === 0 ? ' disabled' : '') + '>← Kembali</button>';
+    html += '<button class="btn-primary" id="btnLanjutkanKuis" type="button">'
+          + (idx === kuisSoalList.length - 1 ? 'Selesai ✓' : 'Lanjutkan →') + '</button>';
+    html += '</div>';
+
+    $('kuisBody').innerHTML = html;
+
+    document.querySelectorAll('#kuisBody .kuis-opsi label').forEach(function(lbl){
+      lbl.addEventListener('click', function(){
+        kuisJawaban[idx] = lbl.getAttribute('data-huruf');
+        document.querySelectorAll('#kuisBody .kuis-opsi label').forEach(function(l){ l.classList.remove('dipilih'); });
+        lbl.classList.add('dipilih');
+      });
+    });
+
+    $('btnKembaliKuis').addEventListener('click', kembaliKuis);
+    $('btnLanjutkanKuis').addEventListener('click', function(){ lanjutkanKuis(); });
+
+    // muat gambar soal/opsi khusus untuk area quis
+    muatSemuaGambarSoal('#kuisBody');
+    renderMathJax($('kuisBody'));
+
+    kuisSisaDetik = kuisDurasi;
+    perbaruiTampilanTimerKuis();
+    mulaiTimerKuis();
+  }
+
+  function mulaiTimerKuis(){
+    hentikanTimerKuis();
+    kuisTimerId = setInterval(function(){
+      kuisSisaDetik--;
+      perbaruiTampilanTimerKuis();
+      if (kuisSisaDetik <= 0){
+        hentikanTimerKuis();
+        lanjutkanKuis(); // waktu habis -> otomatis pindah ke soal berikutnya
+      }
+    }, 1000);
+  }
+
+  function hentikanTimerKuis(){
+    if (kuisTimerId){ clearInterval(kuisTimerId); kuisTimerId = null; }
+  }
+
+  function perbaruiTampilanTimerKuis(){
+    const el = $('kuisTimer');
+    if (!el) return;
+    el.textContent = '⏱ ' + Math.max(kuisSisaDetik, 0);
+    el.classList.toggle('warn', kuisSisaDetik <= 10);
+  }
+
+  function lanjutkanKuis(){
+    hentikanTimerKuis();
+    if (kuisIndex >= kuisSoalList.length - 1){
+      selesaikanKuis();
+      return;
+    }
+    kuisIndex++;
+    renderSoalKuis(kuisIndex);
+  }
+
+  function kembaliKuis(){
+    if (kuisIndex === 0) return;
+    hentikanTimerKuis();
+    kuisIndex--;
+    renderSoalKuis(kuisIndex);
+  }
+
+  function selesaikanKuis(){
+    hentikanTimerKuis();
+    let benar = 0;
+    kuisSoalList.forEach(function(s, i){
+      if (s.kunci && kuisJawaban[i] && String(kuisJawaban[i]).toUpperCase() === String(s.kunci).toUpperCase()) benar++;
+    });
+
+    $('kuisProgress').textContent = 'Quis Selesai';
+    $('kuisTimer').textContent = '✓';
+    $('kuisTimer').classList.remove('warn');
+
+    let html = '<div class="kuis-skor">Skor: ' + benar + ' / ' + kuisSoalList.length + '</div>';
+    html += '<div class="kuis-footer" style="justify-content:center; margin-bottom:16px;">';
+    html += '<button class="btn-primary" id="btnTampilkanKunciKuis" type="button">🔑 Tunjukkan Kunci Jawaban</button>';
+    html += '</div>';
+    html += '<div id="kuisKunciWrap"></div>';
+
+    $('kuisBody').innerHTML = html;
+    $('btnTampilkanKunciKuis').addEventListener('click', tampilkanKunciKuis);
+  }
+
+  function tampilkanKunciKuis(){
+    let html = '';
+    kuisSoalList.forEach(function(s, i){
+      const jawabanUser = kuisJawaban[i];
+      const kunci = s.kunci ? String(s.kunci).toUpperCase() : null;
+      const benar = kunci && jawabanUser && String(jawabanUser).toUpperCase() === kunci;
+      const soalOlahan = ekstrakGambarDariTeks(s.soal);
+
+      html += '<div class="kuis-hasil-item ' + (kunci ? (benar ? 'benar' : 'salah') : '') + '">';
+      html += '<b>' + (i + 1) + '.</b> ' + escapeHtml(soalOlahan.teksBersih);
+      html += '<div class="kuis-hasil-info">';
+      html += 'Jawaban Anda: <b>' + (jawabanUser ? escapeHtml(jawabanUser) : '(tidak dijawab)') + '</b>';
+      if (kunci) html += ' &nbsp;|&nbsp; Kunci Jawaban: <b>' + escapeHtml(kunci) + '</b>';
+      html += '</div></div>';
+    });
+    $('kuisKunciWrap').innerHTML = html;
+    renderMathJax($('kuisKunciWrap'));
+    $('btnTampilkanKunciKuis').style.display = 'none';
+  }
+
+  function tutupKuis(){
+    hentikanTimerKuis();
+    $('kuisOverlay').classList.remove('show');
+  }
+
+  $('btnPreview').addEventListener('click', doPreview);
+  $('btnPrint').addEventListener('click', doPrint);
+  $('btnReset').addEventListener('click', doReset);
+  $('btnKuis').addEventListener('click', doMulaiKuis);
+  $('btnTutupKuis').addEventListener('click', tutupKuis);
+})();
+</script>
+
+</body>
+</html>
